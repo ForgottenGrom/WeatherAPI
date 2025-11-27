@@ -1,6 +1,10 @@
 package main
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+)
 
 type WeatherData struct {
 	City        string  `json:"city"`
@@ -10,5 +14,10 @@ type WeatherData struct {
 
 func main() {
 	weather := WeatherData{"London", 12.5, "Fog"}
-	fmt.Println(weather)
+
+	jsonData, err := json.Marshal(weather)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(string(jsonData))
 }
