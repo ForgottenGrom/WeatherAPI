@@ -1,3 +1,3 @@
-module github.com/ForgottenGrom/Weather-API
+module main
 
 go 1.24.1
