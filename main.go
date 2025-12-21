@@ -1,13 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"time"
+
+	"github.com/redis/go-redis/v9"
 )
+
+var ctx = context.Background()
+var rdb *redis.Client
 
 type WeatherData struct {
 	City        string  `json:"city"`
@@ -26,14 +33,25 @@ type Geo struct {
 }
 
 func main() {
+	rdb = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
+	if _, err := rdb.Ping(ctx).Result(); err != nil {
+		log.Fatalf("Could not connect to Redis: %v", err)
+	}
+	log.Println("Connected to Redis")
+
 	http.HandleFunc("/", getWeather)
-	log.Fatalln(http.ListenAndServe(":8080", nil))
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = ":8080"
 	} else {
 		port = ":" + port
 	}
+	log.Fatalln(http.ListenAndServe(port, nil))
+
 }
 func getWeather(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -43,6 +61,12 @@ func getWeather(w http.ResponseWriter, r *http.Request) {
 		"NewYork": {Lat: 40.71, Lon: -74.01},
 	}
 	city := r.URL.Query().Get("city")
+	val, err := rdb.Get(ctx, city).Result()
+	if err == nil {
+		log.Printf("Getting weather for %s from Redis", val)
+		w.Write([]byte(val))
+		return
+	}
 	geo, ok := m[city]
 	if !ok {
 		http.Error(w, "City not found", http.StatusNotFound)
@@ -76,6 +100,10 @@ func getWeather(w http.ResponseWriter, r *http.Request) {
 	}
 
 	d, _ := json.Marshal(weatherResult)
+	err = rdb.Set(ctx, city, string(d), 30*time.Minute).Err()
+	if err != nil {
+		log.Printf("Failed to set weather data: %v", err)
+	}
 	w.Write(d)
 
 }
