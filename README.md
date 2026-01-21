@@ -70,7 +70,7 @@ Response:
 {
   "city": "Kyiv",
   "temperature": 18.2,
-  "description": "Cloudy ☁️"
+  "description": "Cloudy "
 }
 ```
 ## Contribution
